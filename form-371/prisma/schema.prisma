@@ -1,0 +1,18 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Formulario {
+  id        String   @id @default(cuid())
+  nome      String
+  cpf       String?
+  cidade    String
+  fazenda   String
+  telefone  String
+  createdAt DateTime @default(now())
+}
