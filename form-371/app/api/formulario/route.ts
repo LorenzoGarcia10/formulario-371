@@ -4,6 +4,28 @@ import { formularioSchema } from "@/lib/validations/formulario"
 import { hasValidBearerToken, isOriginAllowed, withCors } from "@/lib/api-security"
 import { getSessionCookieName, parseCookieValue, verifySessionToken } from "@/lib/admin-auth"
 
+const CHATBOT_WEBHOOK_URL =
+  "https://webhook.sagui.online/webhook/abbf0fb3-b07c-43a9-8f51-2f1a5e5823fc"
+
+async function notifyChatbotWebhook(payload: {
+  nome: string
+  telefone: string
+  cidade: string
+  fazenda: string
+}) {
+  try {
+    await fetch(CHATBOT_WEBHOOK_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    })
+  } catch {
+    // Falha do webhook não deve impedir o cadastro principal.
+  }
+}
+
 function requireTokenForGet(request: Request) {
   const hasBearerAccess = hasValidBearerToken(request)
   const sessionToken = parseCookieValue(request, getSessionCookieName())
@@ -99,6 +121,13 @@ export async function POST(request: Request) {
       },
     })
 
+    await notifyChatbotWebhook({
+      nome: created.nome,
+      telefone: created.telefone,
+      cidade: created.cidade,
+      fazenda: created.fazenda,
+    })
+
     return withCors(
       NextResponse.json(
         {
@@ -133,12 +162,13 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url)
-    const limitParam = Number(searchParams.get("limit") ?? 20)
-    const limit = Number.isNaN(limitParam) ? 20 : Math.min(Math.max(limitParam, 1), 100)
+    const limitRaw = searchParams.get("limit")
+    const limitParam = limitRaw ? Number(limitRaw) : undefined
+    const take = limitParam && !Number.isNaN(limitParam) && limitParam > 0 ? limitParam : undefined
 
     const data = await prisma.formulario.findMany({
       orderBy: { createdAt: "desc" },
-      take: limit,
+      take,
       select: {
         id: true,
         nome: true,
@@ -146,6 +176,7 @@ export async function GET(request: Request) {
         cidade: true,
         fazenda: true,
         telefone: true,
+        animalTipo: true,
         createdAt: true,
       },
     })
