@@ -9,6 +9,7 @@ type Cliente = {
   cidade: string
   fazenda: string
   telefone: string
+  animalTipo: "equino" | "bovino" | null
   createdAt: string
 }
 
@@ -20,6 +21,7 @@ export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false)
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [dataError, setDataError] = useState<string | null>(null)
+  const [savingAnimalId, setSavingAnimalId] = useState<string | null>(null)
 
   const formatDate = useMemo(
     () =>
@@ -32,7 +34,7 @@ export default function AdminPage() {
 
   async function loadClientes() {
     setDataError(null)
-    const response = await fetch("/api/formulario?limit=100", {
+    const response = await fetch("/api/formulario", {
       method: "GET",
       credentials: "include",
     })
@@ -91,6 +93,36 @@ export default function AdminPage() {
     })
     setAuthenticated(false)
     setClientes([])
+  }
+
+  async function updateAnimalTipo(id: string, animalTipo: "equino" | "bovino" | null) {
+    setDataError(null)
+    setSavingAnimalId(id)
+
+    try {
+      const response = await fetch("/api/formulario/animal", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ id, animalTipo }),
+      })
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null)
+        setDataError(payload?.message ?? "Não foi possível atualizar o tipo de animal.")
+        return
+      }
+
+      setClientes((prev) =>
+        prev.map((cliente) => (cliente.id === id ? { ...cliente, animalTipo } : cliente)),
+      )
+    } catch {
+      setDataError("Erro de conexão ao atualizar tipo de animal.")
+    } finally {
+      setSavingAnimalId(null)
+    }
   }
 
   useEffect(() => {
@@ -175,13 +207,14 @@ export default function AdminPage() {
               <th className="px-3 py-2">Cidade</th>
               <th className="px-3 py-2">Fazenda</th>
               <th className="px-3 py-2">Telefone</th>
+              <th className="px-3 py-2">Animal</th>
               <th className="px-3 py-2">Data</th>
             </tr>
           </thead>
           <tbody>
             {clientes.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">
+                <td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">
                   Nenhum cadastro encontrado.
                 </td>
               </tr>
@@ -193,6 +226,25 @@ export default function AdminPage() {
                   <td className="px-3 py-2">{cliente.cidade}</td>
                   <td className="px-3 py-2">{cliente.fazenda}</td>
                   <td className="px-3 py-2">{cliente.telefone}</td>
+                  <td className="px-3 py-2">
+                    <select
+                      className="h-9 rounded-md border border-input bg-transparent px-2 text-sm outline-none"
+                      value={cliente.animalTipo ?? ""}
+                      onChange={(e) =>
+                        updateAnimalTipo(
+                          cliente.id,
+                          e.target.value === "equino" || e.target.value === "bovino"
+                            ? e.target.value
+                            : null,
+                        )
+                      }
+                      disabled={savingAnimalId === cliente.id}
+                    >
+                      <option value="">Selecionar</option>
+                      <option value="equino">Equino</option>
+                      <option value="bovino">Bovino</option>
+                    </select>
+                  </td>
                   <td className="px-3 py-2">{formatDate.format(new Date(cliente.createdAt))}</td>
                 </tr>
               ))

@@ -14,5 +14,6 @@ model Formulario {
   cidade    String
   fazenda   String
   telefone  String
+  animalTipo String?
   createdAt DateTime @default(now())
 }
