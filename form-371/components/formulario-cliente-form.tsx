@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -39,6 +39,22 @@ export function FormularioClienteForm() {
 
   const cpfDigits = onlyDigits(cpf, 11)
   const telDigits = onlyDigits(telefone, 11)
+
+  const voltarAoFormulario = useCallback(() => {
+    setEnviado(false)
+    setNome("")
+    setCpf("")
+    setFazenda("")
+    setCidade("")
+    setTelefone("")
+    setErro(null)
+  }, [])
+
+  useEffect(() => {
+    if (!enviado) return
+    const t = window.setTimeout(voltarAoFormulario, 8000)
+    return () => window.clearTimeout(t)
+  }, [enviado, voltarAoFormulario])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -117,6 +133,15 @@ export function FormularioClienteForm() {
               <p className="mt-1 text-xs text-muted-foreground">
                 Obrigado. Em breve nossa equipe entrará em contato.
               </p>
+              <p className="mt-2 text-xs text-muted-foreground">Voltando ao formulário em alguns segundos…</p>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-4 h-10 w-full text-sm"
+                onClick={voltarAoFormulario}
+              >
+                Novo cadastro
+              </Button>
             </div>
           ) : (
             <form

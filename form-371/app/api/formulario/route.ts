@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { formularioSchema } from "@/lib/validations/formulario"
@@ -192,12 +193,19 @@ export async function GET(request: Request) {
       ),
       request,
     )
-  } catch {
+  } catch (err) {
+    console.error("[GET /api/formulario]", err)
+    const prismaErr = err instanceof Prisma.PrismaClientKnownRequestError ? err : null
+    const missingColumn =
+      prismaErr?.code === "P2022" ||
+      (err instanceof Error && /animalTipo|column/i.test(err.message))
     return withCors(
       NextResponse.json(
         {
           ok: false,
-          message: "Erro interno ao listar cadastros.",
+          message: missingColumn
+            ? "Banco em produção desatualizado: rode prisma migrate deploy no Neon (falta a coluna animalTipo)."
+            : "Erro interno ao listar cadastros.",
         },
         { status: 500 },
       ),
