@@ -22,6 +22,7 @@ export default function AdminPage() {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [dataError, setDataError] = useState<string | null>(null)
   const [savingAnimalId, setSavingAnimalId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const formatDate = useMemo(
     () =>
@@ -125,6 +126,34 @@ export default function AdminPage() {
     }
   }
 
+  async function deleteCliente(id: string, nome: string) {
+    if (!window.confirm(`Excluir o cadastro de "${nome}"? Esta ação não pode ser desfeita.`)) {
+      return
+    }
+
+    setDataError(null)
+    setDeletingId(id)
+
+    try {
+      const response = await fetch(`/api/formulario/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        credentials: "include",
+      })
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null)
+        setDataError(payload?.message ?? "Não foi possível excluir o cadastro.")
+        return
+      }
+
+      setClientes((prev) => prev.filter((c) => c.id !== id))
+    } catch {
+      setDataError("Erro de conexão ao excluir cadastro.")
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   useEffect(() => {
     loadClientes().catch(() => {
       setDataError("Erro ao validar sessão.")
@@ -199,7 +228,7 @@ export default function AdminPage() {
       {dataError ? <p className="mb-3 text-sm text-destructive">{dataError}</p> : null}
 
       <div className="overflow-auto rounded-xl border border-border bg-card">
-        <table className="w-full min-w-[980px] text-left text-sm">
+        <table className="w-full min-w-[1080px] text-left text-sm">
           <thead className="bg-muted/50">
             <tr>
               <th className="px-3 py-2">Nome</th>
@@ -209,12 +238,13 @@ export default function AdminPage() {
               <th className="px-3 py-2">Telefone</th>
               <th className="px-3 py-2">Animal</th>
               <th className="px-3 py-2">Data</th>
+              <th className="px-3 py-2 w-28">Ações</th>
             </tr>
           </thead>
           <tbody>
             {clientes.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">
+                <td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">
                   Nenhum cadastro encontrado.
                 </td>
               </tr>
@@ -238,7 +268,7 @@ export default function AdminPage() {
                             : null,
                         )
                       }
-                      disabled={savingAnimalId === cliente.id}
+                      disabled={savingAnimalId === cliente.id || deletingId === cliente.id}
                     >
                       <option value="">Selecionar</option>
                       <option value="equino">Equino</option>
@@ -246,6 +276,16 @@ export default function AdminPage() {
                     </select>
                   </td>
                   <td className="px-3 py-2">{formatDate.format(new Date(cliente.createdAt))}</td>
+                  <td className="px-3 py-2">
+                    <button
+                      type="button"
+                      onClick={() => deleteCliente(cliente.id, cliente.nome)}
+                      disabled={deletingId === cliente.id || savingAnimalId === cliente.id}
+                      className="h-9 rounded-md border border-destructive/50 px-2.5 text-xs font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                    >
+                      {deletingId === cliente.id ? "Excluindo…" : "Excluir"}
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
